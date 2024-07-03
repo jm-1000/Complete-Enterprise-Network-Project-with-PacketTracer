@@ -1,0 +1,77 @@
+!--- AS2 ---
+enable 
+conf terminal
+hostname AS2
+enable secret adm
+
+line console 0
+password adm
+login
+exec-timeout 30
+logging synchronous
+
+access-list 22 permit 172.16.16.0 0.0.0.127
+line vty 0 15
+login local
+transport input ssh
+access-class 22 in
+
+username adm secret adm
+ip domain-name ccna10.com
+crypto key generate rsa general-keys modulus 1024
+
+ntp server 172.16.0.2
+
+no ip domain lookup
+logging host 172.16.16.5
+service timestamps log datetime msec
+vtp mode transparent
+
+interface range f0/2-19, f0/21-22
+shutdown
+interface range f0/1-21
+switchport mode access
+switchp port-security
+switchp port-sec violation restrict
+switchp port-sec mac sticky
+spanning-tree portfast
+spanning-tree bpduguard enable
+
+interface range f0/1-19
+switchp port-sec maximum 1
+switchp access vlan 20
+
+interface range f0/20-21
+switchp port-sec maximum 2
+switchp voice vlan 150
+
+interface range f0/23,g0/2
+switchp mode trunk
+switchp trunk native vlan 20
+switchp trunk allowed vlan 20
+switchp port-security
+switchp port-sec violation restrict
+switchp port-sec maximum 130
+switchp port-sec aging time 10
+spanning-tree portfast trunk
+spanning-tree bpduguard enable
+
+interface range f0/24,g0/1
+switchp mode trunk
+switchp trunk native vlan 20
+ip dhcp snooping trust
+ip arp inspection trust
+spanning-tree vlan 150 cost 4
+
+interface vlan 20
+ip address 172.16.14.4 255.255.254.0
+ip default-gateway 172.16.14.3
+
+ip dhcp snooping
+ip dhcp snooping vlan 20
+no ip dhcp snooping info option
+ip arp inspection vlan 20
+ip arp inspection validate src-mac dst-mac ip
+
+
+

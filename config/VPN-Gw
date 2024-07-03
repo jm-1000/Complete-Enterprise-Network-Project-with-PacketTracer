@@ -1,0 +1,103 @@
+!--- VPN Gateway ---
+enable 
+conf terminal
+hostname VPN_Gw
+enable secret root
+username adm secret adm
+
+line console 0
+login authentication ccna10Auth
+exec-timeout 30
+logging synchronous
+
+access-list 22 permit host 111.10.10.2
+line vty 0 15
+login local
+transport input ssh
+access-class 22 in
+
+ip domain-name ccna10.com
+crypto key generate rsa general-keys modulus 1024
+
+ntp server 1.1.1.1
+
+logging host 172.16.16.5
+service timestamps log datetime msec
+no ip domain lookup
+
+interface f0/0
+ip address 20.20.0.6 255.255.255.248
+no shutdown
+
+ip route 0.0.0.0 0.0.0.0 20.20.0.1
+ip route 172.16.16.160 255.255.255.240 20.20.0.1
+
+ip access-list extended inbound-acl
+permit ip host 111.10.10.2 host 20.20.0.6
+permit tcp host 111.10.10.6 gt 1024 host 20.20.0.6 eq 22
+permit udp any eq 500 host 20.20.0.6 eq 500
+permit udp any eq 4500 host 20.20.0.6 eq 4500
+permit udp host 1.1.1.1 eq 123 host 20.20.0.6
+deny ip 172.16.16.160 0.0.0.15 172.16.16.160 0.0.0.15
+permit ip 172.16.16.160 0.0.0.15 172.16.10.0 0.0.31.255
+permit ip 172.16.16.160 0.0.0.15 111.10.10.0 0.0.0.7
+interface f0/0
+ip access-group inbound-acl in
+
+!!! Trafic in IPsec tunnel VPN_Gw-Fw1
+no ip access-list extended SiteToSiteVPN-acl
+ip access-list extended SiteToSiteVPN-acl
+permit ip 172.16.16.160 0.0.0.15 172.16.0.0 0.0.31.255
+permit ip 172.16.16.160 0.0.0.15 111.10.10.0 0.0.0.7 
+permit ip host 20.20.0.6 host 172.16.16.5
+permit ip host 20.20.0.6 host 111.10.10.3
+
+aaa new-model
+aaa authentication login ccna10Auth group tacacs+ local 
+aaa authorization network ccna10Auth local 
+tacacs-server host 111.10.10.3 
+tacacs-server key aaaPass
+
+!!! IPsec Remote Access VPN
+!!! IPsec Phase I config
+crypto isakmp policy 10
+encr aes 256
+authentication pre-share
+group 2
+
+crypto isakmp client configuration group ccna10group
+key ccna10group
+pool RemAccessVPN-pool
+netmask 255.255.255.240
+
+ip local pool RemAccessVPN-pool 172.16.16.161 172.16.16.170
+
+!!! IPsec Phase II config
+cry ipsec security-association lifetime seconds 600
+crypto ipsec transform-set RemAccessVPN-set esp-3des esp-sha-hmac
+crypto dynamic-map RemAccessVPN-map 10
+set transform-set RemAccessVPN-set 
+reverse-route
+
+crypto map IPSEC-map client authentication list ccna10Auth
+crypto map IPSEC-map isakmp authorization list ccna10Auth
+crypto map IPSEC-map client configuration address respond
+crypto map IPSEC-map 10 ipsec-isakmp dynamic RemAccessVPN-map
+
+!!! IPsec Site-to-Site VPN
+!!! IPsec Phase I config
+crypto isakmp policy 11
+encryption aes
+authentication pre-share
+group 5
+crypto isakmp key ccna10Pass address 111.10.10.2
+
+!!! IPsec Phase II config
+crypto ipsec transform-set SiteToSiteVPN-set esp-aes esp-sha-hmac
+crypto map IPSEC-map 11 ipsec-isakmp
+set peer 111.10.10.2
+set transform-set SiteToSiteVPN-set
+match address SiteToSiteVPN-acl
+
+interface f0/0
+crypto map IPSEC-map

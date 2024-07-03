@@ -1,0 +1,94 @@
+!--- ASA-Fw2 ---
+conf terminal
+hostname fw2
+enable password root
+username adm password adm
+
+ntp server 172.17.0.2
+
+interface g1/1
+nameif inside
+security-level 100
+ip address 172.17.11.234 255.255.255.248
+no shutdown
+
+interface g1/8
+nameif outside
+security-level 0
+ip address 90.100.1.2 255.255.255.252
+no shutdown
+
+route outside 0.0.0.0 0.0.0.0 90.100.1.1
+
+domain-name ccna10.com
+ssh 172.17.11.197 255.255.255.255 inside
+ssh 111.10.10.2 255.255.255.255 outside
+aaa authentication ssh console local
+
+router ospf 1
+router-id 172.17.0.1
+default-information originate
+network 172.17.11.232 255.255.255.248 area 0
+
+object network dyn-nat
+subnet 172.17.0.0 255.255.240.0
+nat (inside,outside) dynamic interface
+
+object network static-nat
+host 172.17.11.233
+nat (inside,outside) static 172.17.11.233
+
+!!! Trafic from outside to inside
+access-list from-outside extended permit icmp any host 172.17.11.235
+access-list from-outside extended permit tcp any eq 25 host 172.17.11.235 gt 1024
+access-list from-outside extended permit tcp any eq 20 host 172.17.11.235 gt 1024
+access-list from-outside extended permit tcp any eq 21 host 172.17.11.235 gt 1024
+access-list from-outside extended permit tcp any eq 53 host 172.17.11.235 gt 1024
+access-list from-outside extended permit udp any eq 53 host 172.17.11.235 gt 1024
+access-list from-outside extended permit tcp any eq 110 host 172.17.11.235 gt 1024
+access-list from-outside extended permit udp any eq 123 host 172.17.11.235 gt 123
+access-list from-outside extended permit tcp any eq 443 host 172.17.11.235 gt 1024
+
+!!! Trafic from Fw1
+access-list from-outside extended permit icmp host 111.10.10.3 172.17.0.0 255.255.240.0
+access-list from-outside extended permit udp host 111.10.10.3 eq 67 172.17.0.0 255.255.240.0 eq 67
+access-list from-outside extended permit udp host 111.10.10.3 eq 53 172.17.0.0 255.255.240.0 gt 1024
+access-list from-outside extended permit tcp host 111.10.10.3 eq 53 172.17.0.0 255.255.240.0 gt 1024
+access-list from-outside extended permit tcp host 111.10.10.3 eq 49 172.17.0.0 255.255.240.0 gt 1024
+access-list from-outside extended permit tcp host 111.10.10.4 eq 25 172.17.0.0 255.255.240.0 gt 1024
+access-list from-outside extended permit tcp host 111.10.10.4 eq 110 172.17.0.0 255.255.240.0 gt 1024
+access-list from-outside extended permit tcp host 111.10.10.5 eq 443 172.17.0.0 255.255.240.0 gt 1024
+access-list from-outside extended permit tcp host 111.10.10.5 eq 80 172.17.0.0 255.255.240.0 gt 1024
+access-list from-outside extended permit tcp host 172.16.16.145 gt 1024 host 172.17.11.233 eq 1720
+access-list from-outside extended permit tcp host 172.16.16.145 eq 1720 host 172.17.11.233 gt 1024
+access-list from-outside extended permit tcp host 172.16.16.133 eq 21 172.17.0.0 255.255.240.0 gt 1024
+access-list from-outside extended permit tcp host 172.16.16.133 eq 20 172.17.0.0 255.255.240.0 gt 1024
+access-list from-outside extended permit udp host 172.16.16.6 eq 5246 172.17.0.0 255.255.240.0 eq 5246
+access-list from-outside extended permit tcp host 111.10.10.2 gt 1024 host 90.100.1.2 eq 22
+access-list from-outside extended permit tcp 172.16.16.0 255.255.255.128 gt 1024 172.17.0.0 255.255.240.0 eq 22
+access-list from-outside extended permit icmp 172.16.16.0 255.255.255.128 172.17.0.0 255.255.240.0
+access-group from-outside in interface outside
+
+!!! Trafic in IPsec tunnel Fw2-Fw1
+access-list IPSEC-acl extended permit ip host 172.17.11.233 host 172.16.16.145
+access-list IPSEC-acl extended permit ip 172.17.0.0 255.255.240.0 host 172.16.16.133
+access-list IPSEC-acl extended permit ip 172.17.0.0 255.255.240.0 111.10.10.0 255.255.255.248
+access-list IPSEC-acl extended permit ip 172.17.0.0 255.255.240.0 172.16.16.0 255.255.255.128
+
+!!! IPsec Phase I config 
+crypto ikev1 policy 10
+ encr aes
+ authentication pre-share
+ group 5
+crypto ikev1 enable outside
+
+tunnel-group 111.10.10.2 type ipsec-l2l
+tunnel-group 111.10.10.2 ipsec-attributes
+ ikev1 pre-shared-key ccna10Pass
+
+!!! IPsec Phase II config
+crypto ipsec ikev1 transform-set IPSEC-set esp-aes esp-sha-hmac
+crypto map IPSEC-map 10 match address IPSEC-acl
+crypto map IPSEC-map 10 set peer 111.10.10.2 
+crypto map IPSEC-map 10 set ikev1 transform-set IPSEC-set 
+crypto map IPSEC-map interface outside

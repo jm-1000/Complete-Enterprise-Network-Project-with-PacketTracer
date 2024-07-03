@@ -1,0 +1,82 @@
+!--- AS8 ---
+enable 
+conf terminal
+hostname AS8
+enable secret adm
+
+line console 0
+password adm
+login
+exec-timeout 30
+logging synchronous
+
+access-list 22 permit 172.16.16.0 0.0.0.127
+access-list 22 permit 172.17.11.192 0.0.0.31
+line vty 0 15
+login local
+transport input ssh
+access-class 22 in
+
+username adm secret adm
+ip domain-name ccna10.com
+crypto key generate rsa general-keys modulus 1024
+
+ntp server 172.17.0.2
+
+logging host 172.17.11.197
+service timestamps log datetime msec
+no ip domain lookup
+vtp mode transparent
+
+interface range f0/3-19, f0/21-22
+shutdown
+interface range f0/1-21
+switchport mode access
+switchp port-security
+switchp port-sec violation restrict
+switchp port-sec mac sticky
+spanning-tree portfast
+spanning-tree bpduguard enable
+
+interface range f0/1-19
+switchp port-sec maximum 1
+switchp access vlan 40
+
+interface range f0/20-21
+switchp port-sec maximum 3
+switchp access vlan 40
+switchp voice vlan 150
+
+interface f0/22
+switchp port-sec maximum 1
+switchp access vlan 150
+
+interface g0/2
+switchp mode trunk
+switchp trunk native vlan 40
+switchp trunk allowed vlan 40
+switchp port-security
+switchp port-sec violation restrict
+switchp port-sec maximum 35
+switchp port-sec aging time 10
+spanning-tree portfast trunk
+spanning-tree bpduguard enable
+
+interface range f0/24,g0/1
+switchp mode trunk
+switchp trunk native vlan 40
+ip dhcp snooping trust
+ip arp inspection trust
+
+interface g0/1
+spanning-tree vlan 150 cost 100
+
+interface vlan 40
+ip address 172.17.11.196 255.255.255.224
+ip default-gateway 172.17.11.195
+
+ip dhcp snooping
+ip dhcp snooping vlan 40
+no ip dhcp snooping info option
+ip arp inspection vlan 40
+ip arp inspection validate src-mac dst-mac ip

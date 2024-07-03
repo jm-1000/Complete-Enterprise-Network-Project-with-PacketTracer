@@ -1,0 +1,72 @@
+!--- AS5 ---
+enable 
+conf terminal
+hostname AS5
+enable secret adm
+
+line console 0
+password adm
+login
+exec-timeout 30
+logging synchronous
+
+access-list 22 permit 172.16.16.0 0.0.0.127
+access-list 22 permit 172.17.11.192 0.0.0.31
+line vty 0 15
+login local
+transport input ssh
+access-class 22 in
+
+username adm secret adm
+ip domain-name ccna10.com
+crypto key generate rsa general-keys modulus 1024
+
+no ip domain lookup
+vtp mode transparent
+
+interface range f0/2-19, f0/21-22
+shutdown
+interface range f0/1-21
+switchport mode access
+switchp port-security
+switchp port-sec violation restrict
+switchp port-sec mac sticky
+spanning-tree portfast
+spanning-tree bpduguard enable
+
+interface range f0/1-19
+switchp port-sec maximum 1
+switchp access vlan 10
+
+interface range f0/20-21
+switchp port-sec maximum 3
+switchp access vlan 10
+switchp voice vlan 150
+
+interface g0/2
+switchp mode trunk
+switchp trunk native vlan 10
+switchp trunk allowed vlan 10
+switchp port-security
+switchp port-sec violation restrict
+switchp port-sec maximum 125
+switchp port-sec aging time 10
+spanning-tree portfast trunk
+spanning-tree bpduguard enable
+
+interface range f0/24,g0/1
+switchp mode trunk
+switchp trunk native vlan 10
+ip dhcp snooping trust
+ip arp inspection trust
+spanning-tree vlan 150 cost 4
+
+interface vlan 10
+ip address 172.17.10.4 255.255.255.0
+ip default-gateway 172.17.10.3
+
+ip dhcp snooping
+ip dhcp snooping vlan 10
+no ip dhcp snooping info option
+ip arp inspection vlan 10
+ip arp inspection validate src-mac dst-mac ip

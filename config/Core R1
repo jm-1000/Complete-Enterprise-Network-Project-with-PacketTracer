@@ -1,0 +1,117 @@
+!--- Core R1 ---
+enable 
+conf terminal
+hostname Core-R1
+enable secret root
+
+line console 0
+login local
+exec-timeout 30
+logging synchronous
+
+access-list 22 permit host 172.16.16.5
+line vty 0 15
+login local
+transport input ssh
+access-class 22 in
+
+username adm secret adm
+ip domain-name ccna10.com
+crypto key generate rsa general-keys modulus 1024
+
+ntp server 1.1.1.1
+ntp master 3
+ntp update-calendar
+
+logging host 172.16.16.5
+service timestamps log datetime msec
+no ip domain lookup
+
+interface loopback 1
+ip address 172.16.0.2 255.255.255.255
+
+interface f0/0
+ip address 172.16.16.145 255.255.255.248
+ip nat outside
+no shutdown
+
+interface f1/0
+ip address 172.16.16.138 255.255.255.252
+ip nat inside
+no shutdown
+
+interface f1/1
+ip address 172.16.16.142 255.255.255.252
+ip nat inside
+no shutdown
+
+router ospf 1
+network 172.16.16.128 0.0.0.31 area 0
+network 172.16.0.2 0.0.0.0 area 0
+
+ip access-list extended nat-acl
+permit tcp host 172.16.16.5 gt 1024 host 90.100.1.2 eq 22  
+permit tcp host 172.16.16.5 gt 1024 host 20.20.0.6 eq 22  
+deny tcp 172.16.10.0 0.0.31.255 gt 1024 host 90.100.1.2 eq 22
+deny tcp 172.16.10.0 0.0.31.255 gt 1024 host 20.20.0.6 eq 22
+deny tcp host 172.16.16.5 gt 1024 host 172.16.16.146 eq 22
+deny ip 172.16.10.0 0.0.31.255 172.16.16.128 0.0.0.7
+deny ip 172.16.10.0 0.0.31.255 172.16.16.160 0.0.0.15
+deny ip 172.16.16.0 0.0.0.255 172.17.10.0 0.0.15.255
+permit ip 172.16.10.0 0.0.31.255 any
+
+ip nat pool nat-pool 172.16.16.147 172.16.16.147 netmask 255.255.255.255
+ip nat inside source list nat-acl pool nat-pool overload
+
+ip dhcp excluded-address 192.168.10.1 192.168.10.4
+ip dhcp pool voip-pool
+network 192.168.10.0 255.255.255.224 
+default-router 192.168.10.3
+option 150 ip 172.16.0.2
+
+telephony-service
+ip source 192.168.10.4 port 2000
+max-dn 20
+max-ephones 20
+auto assign 1 to 10
+ephone-dn 1
+number 1001
+ephone-dn 2
+number 1002
+ephone-dn 3
+number 1003
+ephone-dn 4
+number 1004
+ephone-dn 5
+number 1005
+ephone-dn 6
+number 1006
+ephone-dn 7
+number 1007
+ephone-dn 8
+number 1008
+ephone-dn 9
+number 1009
+ephone-dn 10
+number 1010
+
+dial-peer voice 10 voip
+destination-pattern 11..
+session target ipv4:172.17.11.233
+
+ip access-list extended voip-acl
+permit tcp host 172.16.0.2 range 2000 9999 192.168.10.0 0.0.0.31 gt 1024
+permit udp host 172.16.0.2 range 2000 9999 192.168.10.0 0.0.0.31 gt 1024
+permit tcp host 172.16.16.145 eq 1720 host 172.17.11.233 gt 1024
+permit tcp host 172.16.16.145 gt 1024 host 172.17.11.233 eq 1720 
+permit udp host 172.16.16.145 range 1024 1100 host 172.17.11.233 range 1024 1100 
+
+class-map match-any voip-map
+match access-group name voip-acl
+policy-map voip-pol
+class voip-map
+priority percent 10
+set ip dscp ef 
+
+interface range f0/0,f1/0-1
+service-policy output voip-pol

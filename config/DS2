@@ -1,0 +1,132 @@
+!--- DS2 ---
+enable 
+conf terminal
+hostname DS2
+enable secret root
+
+line console 0
+login local
+exec-timeout 30
+logging synchronous
+
+access-list 22 permit host 172.16.16.5
+line vty 0 15
+login local
+transport input ssh
+access-class 22 in
+
+username adm secret adm
+ip domain-name ccna10.com
+crypto key generate rsa general-keys modulus 1024
+
+ntp server 172.16.0.2
+
+logging host 172.16.16.5
+service timestamps log datetime msec
+
+ip name-server 127.0.0.1
+ip host ds1 172.16.0.3
+ip host ds2 172.16.0.4
+ip host cr1 172.16.0.2
+ip host fw1 172.16.16.146
+ip host as1 172.16.10.4
+ip host as2 172.16.14.4
+ip host as3 172.16.12.4
+ip host as4 172.16.16.4
+ip host wlc 172.16.16.6
+
+vtp mode transparent
+vlan 10
+vlan 20
+vlan 30
+vlan 40
+vlan 150
+spanning-tree vlan 10,20 root secondary
+spanning-tree vlan 30,40,150 root primary
+
+interface range g1/0/5-21,g1/1/1-4
+shutdown
+interface g1/0/1
+switchport mode trunk
+switchp trunk native vlan 10
+switchp trunk allowed vlan 10,150
+
+interface g1/0/2
+switchport mode trunk
+switchp trunk native vlan 20
+switchp trunk allowed vlan 20,150
+
+interface g1/0/3
+switchport mode trunk
+switchp trunk native vlan 30
+switchp trunk allowed vlan 30,150
+
+interface g1/0/4
+switchport mode trunk
+switchp trunk native vlan 40
+switchp trunk allowed vlan 40,150
+
+interface range g1/0/22-23
+channel-group 1 mode active
+
+interface po1
+switchp mode trunk
+switchp trunk allowed vlan 1,10,20,30,40,150
+
+ip routing 
+interface loopback 1
+ip address 172.16.0.4 255.255.255.255
+
+interface vlan 10
+ip address 172.16.10.2 255.255.254.0
+ip helper-address 172.16.16.130
+standby 10 ip 172.16.10.3
+
+interface vlan 20
+ip address 172.16.14.2 255.255.254.0
+ip helper-address 172.16.16.130
+standby 20 ip 172.16.14.3
+
+interface vlan 30
+ip address 172.16.12.2 255.255.254.0
+ip helper-address 172.16.16.130
+standby 30 ip 172.16.12.3
+standby 30 priority 110
+standby 30 preempt
+
+interface vlan 40
+ip address 172.16.16.2 255.255.255.128
+ip helper-address 172.16.16.130
+standby 40 ip 172.16.16.3
+standby 40 priority 110
+standby 40 preempt
+
+interface vlan 150
+ip address 192.168.10.2 255.255.255.224
+ip helper-address 172.16.0.2
+standby 150 ip 192.168.10.3
+
+interface g1/0/24
+no switchport
+ip address 172.16.16.141 255.255.255.252
+no shutdown
+
+router ospf 1
+passive-interface default
+no passive-interface g1/0/24
+no passive-interface vlan 40
+network 172.16.10.0 0.0.31.255 area 0
+network 192.168.10.0 0.0.0.31 area 0
+
+access-list 150 permit tcp 192.168.10.0 0.0.0.31 gt 1024 any range 2000 9999
+access-list 150 permit udp 192.168.10.0 0.0.0.31 gt 1024 any range 2000 9999
+class-map voip-map
+match access-group 150
+
+policy-map voip-pol
+class voip-map
+priority percent 10
+set ip dscp ef 
+
+interface range g1/0/24
+service-policy output voip-pol

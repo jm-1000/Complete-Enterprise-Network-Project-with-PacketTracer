@@ -1,0 +1,175 @@
+!--- ASA-Fw1 ---
+conf terminal
+hostname fw1
+enable password root
+username adm password adm
+
+ntp server 172.16.0.2
+
+interface g1/1
+nameif inside
+security-level 100
+ip address 172.16.16.146 255.255.255.248
+no shutdown
+
+interface g1/7
+nameif dmz
+security-level 50
+ip address 172.16.16.129 255.255.255.248
+no shutdown
+
+interface g1/8
+nameif outside
+security-level 0
+ip address 111.10.10.2 255.255.255.248
+no shutdown
+
+route outside 0.0.0.0 0.0.0.0 111.10.10.1
+
+domain-name ccna10.com
+ssh 172.16.16.5 255.255.255.255 inside
+aaa authentication ssh console local
+
+router ospf 1
+router-id 172.16.0.1
+default-information originate
+network 172.16.16.144 255.255.255.252 area 0
+
+object network dyn-nat
+subnet 172.16.0.0 255.255.224.0
+nat (inside,outside) dynamic interface
+
+object network voip-static-nat
+host 172.16.16.145
+nat (inside,outside) static 172.16.16.145
+
+object network ad-static-nat
+host 172.16.16.130
+nat (dmz,outside) static 111.10.10.3
+
+object network mail-static-nat
+host 172.16.16.131
+nat (dmz,outside) static 111.10.10.4
+
+object network www-static-nat
+host 172.16.16.132
+nat (dmz,outside) static 111.10.10.5
+
+!!! Trafic from dmz to inside
+access-list from-dmz extended permit icmp 172.16.16.128 255.255.255.248 172.16.16.0 255.255.255.128
+access-list from-dmz extended permit icmp host 172.16.16.130 172.16.0.0 255.255.224.0
+access-list from-dmz extended permit udp host 172.16.16.130 eq 67 172.16.0.0 255.255.224.0 eq 67
+access-list from-dmz extended permit udp host 172.16.16.130 eq 53 172.16.0.0 255.255.224.0 gt 1024
+access-list from-dmz extended permit tcp host 172.16.16.130 eq 53 172.16.0.0 255.255.224.0 gt 1024
+access-list from-dmz extended permit tcp host 172.16.16.131 eq 110 172.16.0.0 255.255.224.0 gt 1024
+access-list from-dmz extended permit tcp host 172.16.16.131 eq 25 172.16.0.0 255.255.224.0 gt 1024
+access-list from-dmz extended permit tcp host 172.16.16.132 eq 80 172.16.0.0 255.255.224.0 gt 1024
+access-list from-dmz extended permit tcp host 172.16.16.132 eq 443 172.16.0.0 255.255.224.0 gt 1024
+access-list from-dmz extended permit tcp host 172.16.16.133 eq 21 172.16.0.0 255.255.224.0 gt 1024
+access-list from-dmz extended permit tcp host 172.16.16.133 eq 20 172.16.0.0 255.255.224.0 gt 1024
+
+!!! Trafic from dmz to outside
+access-list from-dmz extended permit udp host 172.16.16.130 gt 1024 any eq 53
+access-list from-dmz extended permit tcp host 172.16.16.130 gt 1024 any eq 53
+access-list from-dmz extended permit tcp host 172.16.16.130 eq 53 any gt 1024
+access-list from-dmz extended permit udp host 172.16.16.130 eq 53 any gt 1024
+access-list from-dmz extended permit tcp host 172.16.16.131 eq 25 any gt 1024
+access-list from-dmz extended permit tcp host 172.16.16.131 gt 1024 any eq 25
+access-list from-dmz extended permit tcp host 172.16.16.131 eq 110 any gt 1024
+access-list from-dmz extended permit tcp host 172.16.16.132 eq 443 any gt 1024
+
+!!! Specific trafic from DMZ to Fw2
+access-list from-dmz extended permit icmp host 172.16.16.130 172.17.0.0 255.255.240.0 
+access-list from-dmz extended permit udp host 172.16.16.130 eq 67 172.17.0.0 255.255.240.0 eq 67
+access-list from-dmz extended permit tcp host 172.16.16.130 eq 49 172.17.0.0 255.255.240.0 gt 1024
+access-list from-dmz extended permit tcp host 172.16.16.132 eq 80 172.17.0.0 255.255.240.0 gt 1024
+
+!!! Specific trafic from DMZ to VPN_Gw
+access-list from-dmz extended permit tcp host 172.16.16.130 eq 49 host 20.20.0.6 gt 1024
+access-list from-dmz extended permit tcp host 172.16.16.133 eq 21 172.16.16.160 255.255.255.240 gt 1024
+access-list from-dmz extended permit tcp host 172.16.16.133 eq 20 172.16.16.160 255.255.255.240 gt 1024
+
+!!! Trafic from outside to dmz 
+access-list from-outside extended permit udp any eq 53 host 172.16.16.130 gt 1024
+access-list from-outside extended permit tcp any eq 53 host 172.16.16.130 gt 1024
+access-list from-outside extended permit tcp any gt 1024 host 172.16.16.130 eq 53
+access-list from-outside extended permit udp any gt 1024 host 172.16.16.130 eq 53
+access-list from-outside extended permit tcp any eq 25 host 172.16.16.131 gt 1024
+access-list from-outside extended permit tcp any gt 1024 host 172.16.16.131 eq 25
+access-list from-outside extended permit tcp any gt 1024 host 172.16.16.131 eq 110
+access-list from-outside extended permit tcp any gt 1024 host 172.16.16.132 eq 443
+
+!!! Specific trafic from Fw2
+access-list from-outside extended permit icmp 172.17.0.0 255.255.240.0 host 172.16.16.130
+access-list from-outside extended permit udp 172.17.0.0 255.255.240.0 eq 68 host 172.16.16.130 eq 67
+access-list from-outside extended permit tcp 172.17.0.0 255.255.240.0 gt 1024 host 172.16.16.130 eq 49
+access-list from-outside extended permit tcp 172.17.0.0 255.255.240.0 gt 1024 host 172.16.16.132 eq 80
+access-list from-outside extended permit udp 172.17.0.0 255.255.240.0 eq 5246 host 172.16.16.6 eq 5246
+access-list from-outside extended permit tcp host 172.17.11.233 gt 1024 host 172.16.16.145 eq 1720
+access-list from-outside extended permit tcp host 172.17.11.233 eq 1720 host 172.16.16.145 gt 1024
+access-list from-outside extended permit tcp host 90.100.1.2 eq 22 host 172.16.16.147 gt 1024
+access-list from-outside extended permit tcp 172.17.0.0 255.255.240.0 eq 22 172.16.16.0 255.255.255.128 gt 1024 
+access-list from-outside extended permit icmp 172.17.0.0 255.255.240.0 172.16.16.0 255.255.255.128
+
+!!! Specific trafic from VPN_Gw
+access-list from-outside extended permit icmp 172.16.16.160 255.255.255.240 172.16.0.0 255.255.224.0
+access-list from-outside extended permit tcp 172.16.16.160 255.255.255.240 gt 1024 host 172.16.16.133 eq 20
+access-list from-outside extended permit tcp 172.16.16.160 255.255.255.240 gt 1024 host 172.16.16.133 eq 21
+access-list from-outside extended permit tcp host 20.20.0.6 gt 1024 host 172.16.16.130 eq 49
+access-list from-outside extended permit udp host 20.20.0.6 gt 514 host 172.16.16.5 eq 514
+
+!!! Trafic from outside to inside
+access-list from-outside extended permit icmp any host 172.16.16.147
+access-list from-outside extended permit tcp any eq 443 host 172.16.16.147 gt 1024
+access-list from-outside extended permit tcp any eq 110 host 172.16.16.147 gt 1024
+access-list from-outside extended permit tcp any eq 25 host 172.16.16.147 gt 1024
+access-list from-outside extended permit tcp any eq 20 host 172.16.16.147 gt 1024
+access-list from-outside extended permit tcp any eq 21 host 172.16.16.147 gt 1024
+access-list from-outside extended permit tcp any eq 53 host 172.16.16.147 gt 1024
+access-list from-outside extended permit udp any eq 53 host 172.16.16.147 gt 1024
+access-list from-outside extended permit udp any eq 123 host 172.16.16.147 gt 1024
+
+!!! Apply the ACLs 
+access-group from-dmz in interface dmz
+access-group from-outside in interface outside
+
+!!! Trafic in IPsec tunnel Fw1-Fw2
+access-list IPSEC-90-acl extended permit ip host 172.16.16.145 host 172.17.11.233
+access-list IPSEC-90-acl extended permit ip host 172.16.16.133 172.17.0.0 255.255.240.0
+access-list IPSEC-90-acl extended permit ip 111.10.10.0 255.255.255.248 172.17.0.0 255.255.240.0  
+access-list IPSEC-90-acl extended permit ip 172.16.16.0 255.255.255.128 172.17.0.0 255.255.240.0 
+
+!!! Trafic in IPsec tunnel Fw1-VPN_Gw
+access-list IPSEC-20-acl extended permit ip host 172.16.16.5 host 20.20.0.6 
+access-list IPSEC-20-acl extended permit ip host 111.10.10.3 host 20.20.0.6 
+access-list IPSEC-20-acl extended permit ip 172.16.0.0 255.255.224.0 172.16.16.160 255.255.255.240
+access-list IPSEC-20-acl extended permit ip 111.10.10.0 255.255.255.248 172.16.16.160 255.255.255.240
+
+!!! IPsec Phase I config 
+crypto ikev1 policy 10
+encr aes
+authentication pre-share
+group 5
+
+crypto ikev1 enable outside
+
+tunnel-group 20.20.0.6 type ipsec-l2l
+tunnel-group 20.20.0.6 ipsec-attributes
+ikev1 pre-shared-key ccna10Pass
+
+tunnel-group 90.100.1.2 type ipsec-l2l
+tunnel-group 90.100.1.2 ipsec-attributes
+ikev1 pre-shared-key ccna10Pass
+
+!!! IPsec Phase II config 
+crypto ipsec ikev1 transform-set IPSEC-set esp-aes esp-sha-hmac
+
+crypto map IPSEC-map 10 match address IPSEC-90-acl
+crypto map IPSEC-map 10 set peer 90.100.1.2 
+crypto map IPSEC-map 10 set ikev1 transform-set IPSEC-set 
+
+crypto map IPSEC-map 11 match address IPSEC-20-acl
+crypto map IPSEC-map 11 set peer 20.20.0.6
+crypto map IPSEC-map 11 set ikev1 transform-set IPSEC-set 
+
+crypto map IPSEC-map interface outside
