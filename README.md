@@ -2,7 +2,7 @@
 
 Building a robust and secure enterprise network. 🧱
 
-[ccna10](/ccna10.png)
+![ccna10](/ccna10.png)
 
 
 
