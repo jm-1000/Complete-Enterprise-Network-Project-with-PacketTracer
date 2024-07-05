@@ -61,6 +61,7 @@ access-list from-dmz extended permit icmp host 172.16.16.130 172.16.0.0 255.255.
 access-list from-dmz extended permit udp host 172.16.16.130 eq 67 172.16.0.0 255.255.224.0 eq 67
 access-list from-dmz extended permit udp host 172.16.16.130 eq 53 172.16.0.0 255.255.224.0 gt 1024
 access-list from-dmz extended permit tcp host 172.16.16.130 eq 53 172.16.0.0 255.255.224.0 gt 1024
+access-list from-dmz extended permit udp host 172.16.16.130 eq 123 172.16.0.0 255.255.224.0 eq 123
 access-list from-dmz extended permit tcp host 172.16.16.131 eq 110 172.16.0.0 255.255.224.0 gt 1024
 access-list from-dmz extended permit tcp host 172.16.16.131 eq 25 172.16.0.0 255.255.224.0 gt 1024
 access-list from-dmz extended permit tcp host 172.16.16.132 eq 80 172.16.0.0 255.255.224.0 gt 1024
@@ -83,9 +84,11 @@ access-list from-dmz extended permit icmp host 172.16.16.130 172.17.0.0 255.255.
 access-list from-dmz extended permit udp host 172.16.16.130 eq 67 172.17.0.0 255.255.240.0 eq 67
 access-list from-dmz extended permit tcp host 172.16.16.130 eq 49 172.17.0.0 255.255.240.0 gt 1024
 access-list from-dmz extended permit tcp host 172.16.16.132 eq 80 172.17.0.0 255.255.240.0 gt 1024
+access-list from-dmz extended permit udp host 172.16.16.130 eq 123 172.17.0.0 255.255.240.0 eq 123
 
 !!! Specific trafic from DMZ to VPN_Gw
 access-list from-dmz extended permit tcp host 172.16.16.130 eq 49 host 20.20.0.6 gt 1024
+access-list from-dmz extended permit udp host 172.16.16.130 eq 123 host 20.20.0.6 eq 123
 access-list from-dmz extended permit tcp host 172.16.16.133 eq 21 172.16.16.160 255.255.255.240 gt 1024
 access-list from-dmz extended permit tcp host 172.16.16.133 eq 20 172.16.16.160 255.255.255.240 gt 1024
 
@@ -98,6 +101,9 @@ access-list from-outside extended permit tcp any eq 25 host 172.16.16.131 gt 102
 access-list from-outside extended permit tcp any gt 1024 host 172.16.16.131 eq 25
 access-list from-outside extended permit tcp any gt 1024 host 172.16.16.131 eq 110
 access-list from-outside extended permit tcp any gt 1024 host 172.16.16.132 eq 443
+access-list from-outside extended permit udp any eq 123 host 172.16.16.130 eq 123 
+
+
 
 !!! Specific trafic from Fw2
 access-list from-outside extended permit icmp 172.17.0.0 255.255.240.0 host 172.16.16.130
@@ -127,7 +133,7 @@ access-list from-outside extended permit tcp any eq 20 host 172.16.16.147 gt 102
 access-list from-outside extended permit tcp any eq 21 host 172.16.16.147 gt 1024
 access-list from-outside extended permit tcp any eq 53 host 172.16.16.147 gt 1024
 access-list from-outside extended permit udp any eq 53 host 172.16.16.147 gt 1024
-access-list from-outside extended permit udp any eq 123 host 172.16.16.147 gt 1024
+access-list from-outside extended permit udp any eq 123 host 172.16.16.147 gt 123
 
 !!! Apply the ACLs 
 access-group from-dmz in interface dmz

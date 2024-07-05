@@ -20,10 +20,8 @@ username adm secret adm
 ip domain-name ccna10.com
 crypto key generate rsa general-keys modulus 1024
 
-ntp server 1.1.1.1
-ntp update-calendar
-
 no ip domain lookup
+ntp server 172.16.16.3
 logging host 172.16.16.5
 service timestamps log datetime msec
 vtp mode transparent

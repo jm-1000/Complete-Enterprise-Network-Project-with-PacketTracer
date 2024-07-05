@@ -38,7 +38,6 @@ permit ip host 111.10.10.2 host 20.20.0.6
 permit tcp host 111.10.10.6 gt 1024 host 20.20.0.6 eq 22
 permit udp any eq 500 host 20.20.0.6 eq 500
 permit udp any eq 4500 host 20.20.0.6 eq 4500
-permit udp host 1.1.1.1 eq 123 host 20.20.0.6
 deny ip 172.16.16.160 0.0.0.15 172.16.16.160 0.0.0.15
 permit ip 172.16.16.160 0.0.0.15 172.16.10.0 0.0.31.255
 permit ip 172.16.16.160 0.0.0.15 111.10.10.0 0.0.0.7
@@ -67,7 +66,7 @@ authentication pre-share
 group 2
 
 crypto isakmp client configuration group ccna10group
-key ccna10group
+key ccna10pass
 pool RemAccessVPN-pool
 netmask 255.255.255.240
 
