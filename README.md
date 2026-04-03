@@ -30,5 +30,3 @@ Building a robust and secure enterprise network. 🧱
 - Configuration of Syslog, NTP for network time synchronization.
 - Configured VOiP peering for multi-site Voice over IP communication.
 
-
-**Note: This project demonstrates a well-rounded set of network design and implementation skills, showcasing expertise in network infrastructure management.**
