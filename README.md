@@ -28,5 +28,5 @@ Building a robust and secure enterprise network. 🧱
 ### Protocol and Service Configuration:
 - Implementation of comprehensive recursive DNS resolution process.
 - Configuration of Syslog, NTP for network time synchronization.
-- Configured VOiP peering for multi-site Voice over IP communication.
+- Configured VoIP peering for multi-site Voice over IP communication.
 
